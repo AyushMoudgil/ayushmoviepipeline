@@ -64,7 +64,7 @@ jobs:
         run: |
           cd starter/frontend
           docker build -t frontend:latest .
-          docker tag frontend-app:latest frontend:${{ github.sha }}
+          docker tag frontend:latest 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
 
   ecr-login:
     runs-on: ubuntu-latest
