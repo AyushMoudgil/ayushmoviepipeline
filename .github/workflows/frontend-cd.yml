@@ -87,7 +87,6 @@ jobs:
     steps:
       - name: Push Docker Image to ECR
         run: |
-          docker tag frontend-app:${{ github.sha }} 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
           docker push 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
 
   deploy:
