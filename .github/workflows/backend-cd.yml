@@ -30,10 +30,8 @@ jobs:
 
       - name: Install Dependencies and Run Linting
         run: |
-          # Add commands to install dependencies and run linting for the backend here
-          # Example:
-          # npm ci
-          # npm run lint
+          npm ci
+          npm run lint
 
   test:
     runs-on: ubuntu-latest
@@ -45,10 +43,8 @@ jobs:
 
       - name: Install Dependencies and Run Tests
         run: |
-          # Add commands to install dependencies and run tests for the backend here
-          # Example:
-          # npm ci
-          # npm test
+          npm ci
+          npm test
 
   build:
     runs-on: ubuntu-latest
@@ -62,9 +58,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          # Add commands to build the Docker image for the backend here
-          # Example:
-          # docker build -t backend:latest .
+          docker build -t backend:latest .
 
   ecr-login:
     runs-on: ubuntu-latest
@@ -89,10 +83,8 @@ jobs:
     steps:
       - name: Push Docker Image to ECR
         run: |
-          # Add commands to tag and push the Docker image to ECR here
-          # Example:
-          # docker tag backend:${{ github.sha }} <your-ecr-repository-url>:${{ github.sha }}
-          # docker push <your-ecr-repository-url>:${{ github.sha }}
+          docker tag backend:${{ github.sha }} 918707588368.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }}
+          docker push 918707588368.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
