@@ -12,7 +12,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: 918707588368.dkr.ecr.us-east-1.amazonaws.com/backend
   EKS_CLUSTER_NAME: backend
-  PYTHON_VERSION: 3.10
+  PYTHON_VERSION: 3.9
 
 jobs:
   deploy:
