@@ -64,6 +64,9 @@ jobs:
       - name: Update kubeconfig for Amazon EKS
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Deploy Docker image to Amazon EKS
+      - name: Apply the Kubernetes manifests
+        run: kubectl apply -f starter/backend/k8s/
+
+      - name: Set the Docker image in the Kubernetes deployment
         run: |
-          kubectl set image deployment/backend backend=${{ env.ECR_REPOSITORY }}:${{ github.sha }} --record
+          kubectl set image deployment/backend backend=${{ env.ECR_REPOSITORY }}:${{ github.sha }}
