@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'starter/backend/**'  # Trigger only for changes in the backend directory
-  workflow_dispatch:  # Allow manual triggers
+      - 'starter/backend/**'
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
@@ -61,12 +61,13 @@ jobs:
           docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
           docker push ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
+      - name: Install Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
       - name: Update kubeconfig for Amazon EKS
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Apply the Kubernetes manifests
-        run: kubectl apply -f starter/backend/k8s/
-
-      - name: Set the Docker image in the Kubernetes deployment
-        run: |
-          kubectl set image deployment/backend backend=${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Apply the Kubernetes manifests with kustomize
+        run: kustomize build starter/backend/k8s | kubectl apply -f -
