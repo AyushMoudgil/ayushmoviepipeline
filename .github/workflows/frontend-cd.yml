@@ -1,15 +1,22 @@
 name: Frontend Continuous Deployment
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - 'starter/frontend/**'
-  workflow_dispatch:
+
+env:
+  NODE_VERSION: 16.9.0
+  REACT_APP_MOVIE_API_URL: http://localhost:5000
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend
+  EKS_CLUSTER_NAME: frontend
 
 jobs:
-  setup:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,82 +26,43 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: starter/frontend/package-lock.json
 
-  lint:
-    runs-on: ubuntu-latest
-    needs: setup
+      - name: Install Dependencies
+        working-directory: starter/frontend
+        run: npm ci
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Run Lint
+        working-directory: starter/frontend
+        run: npm run lint
 
-      - name: Install Dependencies and Run Linting
+      - name: Run Tests
+        working-directory: starter/frontend
+        run: npm test
+
+      - name: Build and Push Docker Image
+        working-directory: starter/frontend
         run: |
-          cd starter/frontend
-          npm ci
-          npm run lint
+          docker build --build-arg REACT_APP_MOVIE_API_URL=${{ env.REACT_APP_MOVIE_API_URL }} -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+          docker push ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-  test:
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install Dependencies and Run Tests
-        run: |
-          cd starter/frontend
-          npm ci
-          npm test
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Build Docker Image
-        run: |
-          cd starter/frontend
-          docker build -t 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }} .
-
-  ecr-login:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          registry: 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-  ecr-push:
-    runs-on: ubuntu-latest
-    needs: ecr-login
+      - name: Configure Kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-    steps:
-      - name: List Docker images
-        run: docker images
-
-      - name: Push Docker Image to ECR
+      - name: Deploy Docker Image to Amazon EKS
+        working-directory: starter/frontend/k8s
         run: |
-          docker push 918707588368.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: ecr-push
-
-    steps:
-      - name: Deploy to Kubernetes
-        run: |
-          kubectl apply -f kubernetes-manifests/frontend-deployment.yaml
-        env:
-          KUBECONFIG: ${{ github.workspace }}/kubeconfig.yaml
+          kustomize edit set image frontend=${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          kustomize build | kubectl apply -f -
